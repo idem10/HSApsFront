@@ -4,57 +4,52 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useEffect, useState } from 'react';
-import { FlatList, Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Image,
+  ImageBackground,
+  StyleSheet,
+  TouchableOpacity
+} from 'react-native';
+
+// services
+import { GetAllPost } from '../../utils/services/DashServices';
 
 export default function TabOneScreen() {
   const router = useRouter();
-  const [User, setUser] = useState(null);
+  const [User, setUser] = useState<any>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
 
-  const [text, setText] = useState('');
-  const [images, setImages] = useState([]);
+  // ANIMACIÓN SCROLL
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const translateY = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [0, -220],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     const fetchUser = async () => {
-      try {
-        const userData = await SecureStore.getItemAsync('userToken');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setUser(user);
-        }
-      } catch (error) {
-        console.error('Error leyendo SecureStore:', error);
-      }
+      const userData = await SecureStore.getItemAsync('userToken');
+      if (userData) setUser(JSON.parse(userData));
     };
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    GetAllPost().then(setPosts);
+  }, []);
+
   const handleLogout = async () => {
     await SecureStore.deleteItemAsync('userToken');
-    router.push("/Login")
-  }
-
-  const [posts, setPosts] = useState([
-    {
-      id: '1',
-      user: 'Carlos M.',
-      avatar: require('../../assets/images/logo.png'),
-      image: require('../../assets/images/logo.png'),
-      caption: 'Disfrutando el atardecer 🌅',
-    },
-    {
-      id: '2',
-      user: 'Ana G.',
-      avatar: require('../../assets/images/logo.png'),
-      image: require('../../assets/images/logo.png'),
-      caption: 'Nueva receta de brunch 🍳',
-    },
-  ]);
+    router.push('/Login');
+  };
 
   const handlePost = () => {
-    console.log('Publicación:', { text, images });
-    // Aquí iría la lógica para subir el post a tu backend
-    setText('');
+    console.log('Post:', images);
     setImages([]);
   };
 
@@ -70,205 +65,166 @@ export default function TabOneScreen() {
     }
   };
 
-  const renderPost = ({ item }) => (
-    <View style={styles.postCard}>
+  const renderPost = ({ item }: any) => (
+    <View style={styles.postCard}>      
       <View style={styles.postHeader}>
-        <Image source={item.avatar} style={styles.avatar} />
-        <Text style={styles.postUser}>{item.user}</Text>
+        <Image source={{ uri: item.UserImagen }} style={styles.avatar} />
+        <Text style={styles.postUser}>{item.UserName}</Text>
       </View>
-      <Image source={item.image} style={styles.postImage} />
-      <Text style={styles.postCaption}>{item.caption}</Text>
+      <Image source={{ uri: item.Imagen }} style={styles.postImage} />
+      <Text style={styles.postCaption}>{item.Contenido}</Text>
     </View>
   );
 
-  
   return (
     <View style={styles.container}>
       <ImageBackground
         source={require('../../assets/images/fondo2.jpg')}
         style={styles.background}
-        resizeMode="cover"
       >
         <LinearGradient
           colors={['rgba(15,23,42,0.7)', 'rgba(37,99,235,0.7)']}
           style={styles.overlay}
         >
-          {/* Header profesional con avatar, nombre y botones */}
-            <View style={styles.header}>
-              {/* Avatar + nombre/email */}
-              <View style={styles.userInfo}>
-                <Image
-                  source={User?.Avatar || require('../../assets/images/logo.png')}
-                  style={styles.avatar}
-                />
-                <View style={styles.userText}>
-                  <Text style={styles.userName}>{User?.Nombre} {User?.Appelidos}</Text>
-                  <Text style={styles.userEmail}>{User?.Email}</Text>
-                </View>
-              </View>
-
-              {/* Botones */}
-              <View style={styles.headerButtons}>
-                <ScrollView style={styles.container}>
-                  {/* Botones de acción */}
-                  <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={pickImage}>
-                      <Ionicons name="image-outline" size={24} color="#1877f2" />
-                      <Text style={styles.actionText}>Imagen</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.actionButton}>
-                      <MaterialIcons name="videocam" size={24} color="#1877f2" />
-                      <Text style={styles.actionText}>Video</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.actionButton}>
-                      <FontAwesome name="user-plus" size={24} color="#1877f2" />
-                      <Text style={styles.actionText}>Etiquetar</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Botón publicar */}
-                  <TouchableOpacity style={styles.postButton} onPress={handlePost}>
-                    <Text style={styles.postButtonText}>Publicar</Text>
-                  </TouchableOpacity>
-                </ScrollView>
+          {/* 🔥 HEADER ANIMADO */}
+          <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
+            
+            <View style={styles.userInfo}>
+              <Image
+                source={
+                  User?.Avatar
+                    ? { uri: User.Avatar }
+                    : require('../../assets/images/logo.png')
+                }
+                style={styles.avatar}
+              />
+              <View>
+                <Text style={styles.userName}>
+                  {User?.Nombre} {User?.Appelidos}
+                </Text>
+                <Text style={styles.userEmail}>{User?.Email}</Text>
               </View>
             </View>
-          {/* Lista de posts */}
-          <FlatList
+
+            {/* BOTONES */}
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.actionButton} onPress={pickImage}>
+                <Ionicons name="image-outline" size={22} color="#1877f2" />
+                <Text style={styles.actionText}>Imagen</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButton}>
+                <MaterialIcons name="videocam" size={22} color="#1877f2" />
+                <Text style={styles.actionText}>Video</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButton}>
+                <FontAwesome name="user-plus" size={22} color="#1877f2" />
+                <Text style={styles.actionText}>Etiquetar</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.postButton} onPress={handlePost}>
+              <Text style={styles.postButtonText}>Publicar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+          {/* LISTA CON SCROLL */}
+          <Animated.FlatList
             data={posts}
             keyExtractor={(item) => item.id}
             renderItem={renderPost}
-            contentContainerStyle={styles.postsList}
+            contentContainerStyle={{ paddingTop: 240, paddingBottom: 20 }}
             showsVerticalScrollIndicator={false}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
           />
         </LinearGradient>
       </ImageBackground>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   background: { flex: 1 },
-  overlay: { flex: 1, padding: 15 },
-  postsList: { paddingBottom: 20 },
-  postCard: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 15,
-    marginBottom: 20,
-    overflow: 'hidden',
-  },
-  postHeader: { flexDirection: 'row', alignItems: 'center', padding: 10 },  
-  postUser: { fontWeight: 'bold', fontSize: 16 },
-  postImage: { width: '100%', height: 200 },
-  postCaption: { padding: 10, fontSize: 14, color: '#0f172a' },
+  overlay: { flex: 1 },
+
   header: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    padding: 15,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
+
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 10,
   },
+
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#2563eb',
-    marginRight: 15,
-  },
-  userText: {
-    flexDirection: 'column',
-  },
-  userName: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  userEmail: {
-    color: '#ddd',
-    fontSize: 14,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  logoutButton: {
-    flex: 1,
-    backgroundColor: '#ef4444',
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
-  logoutText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  createPostButton: {
-    flex: 1,
-    backgroundColor: '#2563eb',
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginLeft: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  createPostText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
+
+  userName: { color: '#fff', fontWeight: 'bold' },
+  userEmail: { color: '#ccc', fontSize: 12 },
+
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 15,
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 10,
+    marginVertical: 10,
   },
-  actionButton: {
-    alignItems: 'center',
-  },
-  actionText: {
-    marginTop: 4,
-    color: '#1877f2',
-    fontWeight: '500',
-  },
+
+  actionButton: { alignItems: 'center' },
+  actionText: { color: '#1877f2', fontSize: 12 },
+
   postButton: {
     backgroundColor: '#1877f2',
-    paddingVertical: 15,
+    padding: 12,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 10,
   },
-  postButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  }
+
+  postButtonText: { color: '#fff', fontWeight: 'bold' },
+
+  logoutButton: {
+    backgroundColor: '#ef4444',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+
+  logoutText: { color: '#fff' },
+
+  postCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    marginHorizontal: 15,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+
+  postUser: { fontWeight: 'bold' },
+  postImage: { width: '100%', height: 200 },
+  postCaption: { padding: 10 },
 });
