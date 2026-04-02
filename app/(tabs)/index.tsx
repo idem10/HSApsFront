@@ -98,12 +98,18 @@ export default function TabOneScreen() {
   const renderPost = ({ item }: any) => (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
-        <Image source={{ uri: item.UserImagen }} style={styles.avatar} />
-        <Text style={styles.postUser}>{item.UserName}</Text>
+         {/* IZQUIERDA */}
+          <View style={styles.postHeaderLeft}>
+            <Image source={{ uri: item.UserImagen }} style={styles.avatar} />
+            <Text style={styles.postUser}>{item.UserName}</Text>
+          </View>
+
+          {/* DERECHA */}
+          <Text style={styles.postTime}>
+            {new Date(item.FechaCreacion).toLocaleTimeString()}
+          </Text>
       </View>
-
       <Image source={{ uri: item.Imagen }} style={styles.postImage} />
-
       <Text style={styles.postCaption}>{item.Contenido}</Text>
     </View>
   );
@@ -276,4 +282,13 @@ const styles = StyleSheet.create({
   postUser: { fontWeight: 'bold' },
   postImage: { width: '100%', height: 200 },
   postCaption: { padding: 10 },
+  postTime: {
+    fontSize: 12,
+    color: '#FFF',
+    marginLeft: 150,
+  },
+  postHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });
