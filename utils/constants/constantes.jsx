@@ -1,0 +1,1 @@
+export const BASEURL = "https://hsaps-dhebbeaefyg5g9d0.canadacentral-01.azurewebsites.net/";
