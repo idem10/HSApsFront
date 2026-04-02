@@ -9,6 +9,7 @@ import {
   Animated,
   Image,
   ImageBackground,
+  RefreshControl,
   StyleSheet,
   TouchableOpacity
 } from 'react-native';
@@ -18,18 +19,35 @@ import { GetAllPost } from '../../utils/services/DashServices';
 
 export default function TabOneScreen() {
   const router = useRouter();
+
+  const [refreshing, setRefreshing] = useState(false);
+
   const [User, setUser] = useState<any>(null);
   const [images, setImages] = useState<string[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
+  
+  const lastScrollY = useRef(0);
+  const [showHeader, setShowHeader] = useState(true);
+  const translateY = useRef(new Animated.Value(0)).current;
+  
+  const handleScroll = (event: any) => {
+    const currentY = event.nativeEvent.contentOffset.y;
 
-  // ANIMACIÓN SCROLL
-  const scrollY = useRef(new Animated.Value(0)).current;
+    if (currentY > lastScrollY.current && currentY > 50) {
+      if (showHeader) setShowHeader(false); // bajar
+    } else {
+      if (!showHeader) setShowHeader(true); // subir
+    }
 
-  const translateY = scrollY.interpolate({
-    inputRange: [0, 120],
-    outputRange: [0, -220],
-    extrapolate: 'clamp',
-  });
+    lastScrollY.current = currentY;
+  };
+  
+  useEffect(() => {
+    Animated.spring(translateY, {
+      toValue: showHeader ? 0 : -220,
+      useNativeDriver: true,
+    }).start();
+  }, [showHeader]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -65,13 +83,27 @@ export default function TabOneScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await GetAllPost();
+      setPosts(res);
+    } catch (error) {
+      console.error('Error al refrescar:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const renderPost = ({ item }: any) => (
-    <View style={styles.postCard}>      
+    <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <Image source={{ uri: item.UserImagen }} style={styles.avatar} />
         <Text style={styles.postUser}>{item.UserName}</Text>
       </View>
+
       <Image source={{ uri: item.Imagen }} style={styles.postImage} />
+
       <Text style={styles.postCaption}>{item.Contenido}</Text>
     </View>
   );
@@ -86,9 +118,17 @@ export default function TabOneScreen() {
           colors={['rgba(15,23,42,0.7)', 'rgba(37,99,235,0.7)']}
           style={styles.overlay}
         >
-          {/* 🔥 HEADER ANIMADO */}
-          <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
-            
+
+          {/* HEADER ANIMADO */}
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                transform: [{ translateY }],
+                opacity: showHeader ? 1 : 0.98,
+              },
+            ]}
+          >
             <View style={styles.userInfo}>
               <Image
                 source={
@@ -128,18 +168,29 @@ export default function TabOneScreen() {
               <Text style={styles.postButtonText}>Publicar</Text>
             </TouchableOpacity>
           </Animated.View>
-          {/* LISTA CON SCROLL */}
+
+          {/* 🔥 LISTA */}
           <Animated.FlatList
             data={posts}
             keyExtractor={(item) => item.id}
             renderItem={renderPost}
-            contentContainerStyle={{ paddingTop: 240, paddingBottom: 20 }}
+            contentContainerStyle={{
+              paddingTop: 240,
+              paddingBottom: 20,
+            }}
             showsVerticalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: true }
-            )}
+            onScroll={handleScroll}
             scrollEventThrottle={16}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#1877f2']} // Android
+                tintColor="#1877f2" // iOS
+              />
+            }
           />
         </LinearGradient>
       </ImageBackground>
