@@ -169,10 +169,10 @@ export default function TabOneScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* 🔥 LISTA */}
+          {/* LISTA */}
           <Animated.FlatList
             data={posts}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => item.id?.toString() || index.toString()}
             renderItem={renderPost}
             contentContainerStyle={{
               paddingTop: 240,
@@ -181,8 +181,6 @@ export default function TabOneScreen() {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
